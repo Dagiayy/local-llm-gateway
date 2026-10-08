@@ -1,0 +1,19 @@
+# Environment & secrets
+.env
+
+# Database & runtime storage
+data/postgres/
+data/projects/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

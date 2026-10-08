@@ -1,0 +1,47 @@
+services:
+  local-llm-db:
+    image: postgres:16-alpine
+    container_name: local-llm-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-localllm}
+      POSTGRES_USER: ${POSTGRES_USER:-localllm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-localllm}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+
+  local-llm:
+    build: .
+    container_name: local-llm
+    restart: unless-stopped
+    depends_on:
+      - local-llm-db
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+      - "${UI_PORT:-3000}:80"
+    volumes:
+      - ${OLLAMA_MODELS_PATH:-D:/ollama/Models}:/root/.ollama/models
+      - ./data:/data
+    environment:
+      # How much conversation history (in tokens) a model keeps in its context
+      # window per request. Higher = longer coherent chats, more VRAM per request.
+      OLLAMA_CONTEXT_LENGTH: ${OLLAMA_CONTEXT_LENGTH:-8192}
+      # Faster inference + lower VRAM per request (supported on this GPU).
+      OLLAMA_FLASH_ATTENTION: 1
+      # How long an idle model stays loaded in VRAM before unloading. -1 = never
+      # (avoids paying a ~10-90s reload cost after every idle gap). Switching
+      # *between* the two models still costs a reload if they don't both fit
+      # in VRAM at once - that's a hardware limit, not a setting.
+      OLLAMA_KEEP_ALIVE: ${OLLAMA_KEEP_ALIVE:--1}
+      POSTGRES_HOST: local-llm-db
+      POSTGRES_DB: ${POSTGRES_DB:-localllm}
+      POSTGRES_USER: ${POSTGRES_USER:-localllm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-localllm}
+    # Remove this whole block if you don't have an NVIDIA GPU / GPU passthrough set up in Docker Desktop.
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
